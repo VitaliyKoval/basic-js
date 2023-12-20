@@ -22,78 +22,70 @@ const { NotImplementedError } = require('../extensions/index.js');
 class VigenereCipheringMachine {
   constructor(isDirect = true) {
     this.isDirect = isDirect;
-    this.alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ ';
+    this.lengthABC = 26;
+    this.startPosition = 65;
+  }
+
+  config(message, key) {
+    if (!message || !key) {
+      throw new Error("Incorrect arguments!");
+    }
+
+    message = message.toUpperCase();
+    key = key.toUpperCase();
+
+    if (message.length > key.length) {
+      key = key.repeat(Math.ceil(message.length / key.length));
+    }
+
+    this.message = message;
+    this.key = key;
   }
 
   encrypt(message, key) {
-    this.validateInputs(message, key);
+    this.config(message, key);
 
-    const encryptedMessage = this.processMessage(message, key, true);
-    return this.isDirect ? encryptedMessage : this.reverseString(encryptedMessage);
-  }
+    let res = "";
+    let indent = 0;
 
-  decrypt(encryptedMessage, key) {
-    this.validateInputs(encryptedMessage, key);
+    for (let i = 0; i < this.message.length; i++) {
+      const char = this.message.charCodeAt(i) - this.startPosition;
+      const shift = this.key.charCodeAt(i - indent) - this.startPosition;
 
-    const decryptedMessage = this.processMessage(encryptedMessage, key, false);
-    return this.isDirect ? decryptedMessage : this.reverseString(decryptedMessage);
-  }
-
-  processMessage(message, key, isEncrypt) {
-    const keyRepeated = this.repeatKey(key, message.length);
-    let result = '';
-
-    for (let i = 0; i < message.length; i++) {
-      if (this.isAlphabetic(message[i])) {
-        const messageCharIndex = this.charToAlphabetIndex(message[i]);
-        const keyCharIndex = this.charToAlphabetIndex(keyRepeated[i]);
-
-        let newIndex;
-        if (isEncrypt) {
-          newIndex = (messageCharIndex + keyCharIndex) % 26;
-        } else {
-          // Correct the calculation for decryption
-          newIndex = (messageCharIndex - keyCharIndex + 26) % 26;
-        }
-
-        result += this.alphabet[newIndex];
+      if (char < 0 || char > this.lengthABC) {
+        res += this.message[i];
+        indent++;
       } else {
-        // Preserve spaces during encryption and decryption
-        result += message[i];
+        res += String.fromCharCode(
+          ((char + shift) % this.lengthABC) + this.startPosition
+        );
       }
     }
 
-    return result;
+    return this.isDirect ? res : res.split("").reverse().join("");
   }
+  decrypt(message, key) {
+    this.config(message, key);
 
-  repeatKey(key, length) {
-    const repeatedKey = key.toUpperCase().repeat(Math.ceil(length / key.length)).substr(0, length);
-    return repeatedKey;
-  }
+    let res = "";
+    let indent = 0;
 
-  isAlphabetic(char) {
-    return /[A-Z]/.test(char.toUpperCase());
-  }
+    for (let i = 0; i < this.message.length; i++) {
+      const char = this.message.charCodeAt(i) - this.startPosition;
+      const shift = this.key.charCodeAt(i - indent) - this.startPosition;
 
-  charToAlphabetIndex(char) {
-    return this.alphabet.indexOf(char.toUpperCase());
-  }
-
-  reverseString(str) {
-    return str.split('').reverse().join('');
-  }
-
-  validateInputs(message, key) {
-    if (
-      !message ||
-      !key ||
-      typeof message !== 'string' ||
-      typeof key !== 'string' ||
-      !message.trim() ||
-      !key.trim()
-    ) {
-      throw new Error('Incorrect arguments!');
+      if (char < 0 || char > this.lengthABC) {
+        res += this.message[i];
+        indent++;
+      } else {
+        res += String.fromCharCode(
+          ((char - shift + this.lengthABC) % this.lengthABC) +
+          this.startPosition
+        );
+      }
     }
+
+    return this.isDirect ? res : res.split("").reverse().join("");
   }
 }
 
